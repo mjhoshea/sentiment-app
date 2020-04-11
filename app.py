@@ -1,7 +1,8 @@
 from flask import Flask, request
 import tweepy
 from StreamListenerImpl import StreamListenerImpl
-
+from kafka import KafkaProducer, KafkaConsumer
+import json
 
 app = Flask(__name__)
 
@@ -14,8 +15,9 @@ auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
 auth.set_access_token(access_token, access_token_secret)
 api = tweepy.API(auth)
 
-
-streamListener = StreamListenerImpl()
+producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+consumer = KafkaCo
+streamListener = StreamListenerImpl(producer)
 myStream = tweepy.Stream(auth=api.auth, listener=streamListener)
 
 
