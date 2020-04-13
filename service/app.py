@@ -1,11 +1,10 @@
-from flask import Flask, request
+from flask import Flask
 import tweepy
-from StreamListenerImpl import StreamListenerImpl
 from kafka import KafkaProducer, KafkaConsumer
 import json
 import nltk
 
-
+from service.StreamListenerImpl import StreamListenerImpl
 
 app = Flask(__name__)
 
