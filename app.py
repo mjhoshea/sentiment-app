@@ -41,7 +41,7 @@ def track_topic(topic):
     myStream.filter(track=[topic], is_async=True)
     return 'Getting Your Topic'
 
-@app.route('/analysis/<topic>')
+@app.route('/analyse/<topic>')
 def analysis_topic(topic):
     print(topic)
     consumer = KafkaConsumer('test', bootstrap_servers='localhost:9092', value_deserializer=lambda m: json.loads(m.decode('utf-8')))
