@@ -3,24 +3,23 @@ import tweepy
 from kafka import KafkaProducer, KafkaConsumer
 import json
 import nltk
-
+from flask_socketio import SocketIO, send
+from dotenv import load_dotenv
 from service.StreamListenerImpl import StreamListenerImpl
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
+import os
 
+load_dotenv()
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'secret!'
+socketio = SocketIO(app, cors_allowed_origins='*')
 
 nltk.download('vader_lexicon')
-
-from nltk.sentiment.vader import SentimentIntensityAnalyzer
-
 sid = SentimentIntensityAnalyzer()
 
-consumer_key='yZst27GNzlTDMVnxw5qKPTp53'
-consumer_secret='1Mh6ZqmZ042YAjeyf5cZujGbY99NrtTuvP5lVgX3T0OAoj7Sis'
-access_token='1175398657765576704-zPdSrh590OGC3wPHQRljTJTbbyecaG'
-access_token_secret='aLUpTCTU8mbZ9omZVs6CCrMJR8qOW4LglCIMihrjYRpKD'
+auth = tweepy.OAuthHandler(os.getenv('CONSUMER_KEY'), os.getenv('CONSUMER_SECRET'))
+auth.set_access_token(os.getenv('ACCESS_TOKEN'), os.getenv('ACCESS_TOKEN_SECRET'))
 
-auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-auth.set_access_token(access_token, access_token_secret)
 api = tweepy.API(auth)
 
 producer = KafkaProducer(bootstrap_servers='localhost:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
@@ -40,18 +39,15 @@ def track_topic(topic):
     myStream.filter(track=[topic], is_async=True)
     return 'Getting Your Topic'
 
+
 @app.route('/analyse/<topic>')
 def analysis_topic(topic):
     print(topic)
     consumer = KafkaConsumer('test', bootstrap_servers='localhost:9092', value_deserializer=lambda m: json.loads(m.decode('utf-8')))
     for mes in consumer:
         tweet = json.loads(mes.value)['text']
-        print('                         ')
-        print('-------------------------')
-        print(tweet)
-        print(sid.polarity_scores(tweet))
-        print('-------------------------')
-        print('                         ')
+        polarity_score = sid.polarity_scores(tweet)
+        socketio.emit('polarity_scores', json.dumps(polarity_score))
 
 
 @app.route('/stop')
@@ -60,5 +56,12 @@ def stop_stream():
     return 'Stopping your stream'
 
 
+@socketio.on('message')
+def handle_message(msg):
+    print('Message: ' + msg)
+    send(msg, broadcast=True)
+
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0')
+    socketio.run(app, host='0.0.0.0')
+    # app.run(host='0.0.0.0')
